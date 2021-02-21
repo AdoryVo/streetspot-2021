@@ -3,7 +3,7 @@ import {Button, Image, View, Platform} from 'react-native';
 import {FontAwesome5} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
-export const CustomImageField = () => {
+export const CustomImageField = ({field, form, ...props}) => {
     const [image, setImage] = useState(null);
 
     useEffect(() => {
@@ -38,6 +38,7 @@ export const CustomImageField = () => {
                                  onPress={pickImage}>
                 Choose or Take A Photo
             </FontAwesome5.Button>
+            <input id="image" {...field} {...props} style={{display: 'none'}} value={(image) ? image : ''}/>
             {image && <Image source={{uri: image}} style={{width: 200, height: 200, marginTop: '0.5rem'}}/>}
         </View>
     );

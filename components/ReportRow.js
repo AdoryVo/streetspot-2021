@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Image, StyleSheet, Text, View} from 'react-native';
 import {TouchableHighlight} from "react-native-web";
 import {FontAwesome5} from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -9,26 +9,32 @@ const ReportRow = (props) => {
     const report = props.report;
 
     return (
-        <TouchableHighlight activeOpacity={0.6} underlayColor="#264576" style={{width: '75vw'}} onPress={() => navigation.navigate('View Report Modal', {
+        <TouchableHighlight activeOpacity={0.6} underlayColor="#264576" style={{width: '85vw'}} onPress={() => navigation.navigate('View Report Modal', {
             title: report.title,
+            image: report.image,
             description: report.description,
             category: report.category,
+            date: report.date,
+            lat: report.lat,
+            lng: report.lng,
+            likes: report.likes,
+            dislikes: report.dislikes
         })}>
-            <View style={{flex: 1, backgroundColor: '#182b49', color: 'white', marginBottom: '0.5rem', padding: 12, width: '100%'}}>
-                <Text style={styles.text}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#182b49', color: 'white', marginBottom: '0.5rem', padding: 12, width: '100%'}}>
+                <Text style={[styles.text, {width: '33%'}]}>
                     <FontAwesome5 name="binoculars" color="white"/>
                     {' '}
                     {report.title}
                 </Text>
+                <Image source={{uri: report.image}} style={{width: 96, height: 96}}/>
                 <Text style={styles.text}>
                     <FontAwesome5 name="thumbs-up" color="white"/>
                     {' '}
-                    {report.upvotes}
-                </Text>
-                <Text style={styles.text}>
+                    {report.likes}
+                    {'  '}
                     <FontAwesome5 name="thumbs-down" color="white"/>
                     {' '}
-                    {report.downvotes}
+                    {report.dislikes}
                 </Text>
             </View>
         </TouchableHighlight>
