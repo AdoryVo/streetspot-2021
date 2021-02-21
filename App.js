@@ -2,7 +2,7 @@
 /* ----- Native ----- */
 import {StatusBar} from 'expo-status-bar';
 import React, {useEffect, useState} from 'react';
-import {FlatList, Image, SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {FlatList, Image, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
 
 /* ----- External Back-end ----- */
 import {Loader} from "@googlemaps/js-api-loader"
@@ -39,23 +39,6 @@ function storeReport(report) {
     });
 }
 
-function getReports() {
-    const mostLiked = firebase.database().ref('reports').orderByChild('likes');
-    mostLiked.once('value', (snapshot) => {
-        let reportsArray = [];
-        snapshot.forEach((childSnapshot) => {
-            let report = childSnapshot.val();
-            report.id = childSnapshot.key;
-            reportsArray.push(report);
-        });
-
-        console.log(reportsArray);
-        reports = reportsArray;
-
-        return reportsArray;
-    });
-}
-
 /* ---------- CONFIGURATION / INITIALIZATION ---------- */
 /* ----- Firebase ----- */
 const firebaseConfig = {
@@ -71,11 +54,20 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 const mostLiked = firebase.database().ref('reports').orderByChild('likes');
-mostLiked.once('value', (snapshot) => {
+/*mostLiked.once('value', (snapshot) => {
+    snapshot.forEach((childSnapshot) => {
+        reports.push(Object.assign(childSnapshot.val(), {id: childSnapshot.key}));
+    });
+});*/
+
+mostLiked.on('value', (snapshot) => {
+    reports.length = 0;
     snapshot.forEach((childSnapshot) => {
         reports.push(Object.assign(childSnapshot.val(), {id: childSnapshot.key}));
     });
 });
+
+const tempChange = true;
 
 /* ----- Maps JavaScript API ----- */
 const loader = new Loader({
@@ -128,7 +120,10 @@ class HomeScreen extends React.Component {
                     const place = this.state.autocomplete.getPlace();
 
                     console.log(place.geometry);
-                    this.props.navigation.navigate('Live Map', {lat: place.geometry.location.lat(), lng: place.geometry.location.lng()});
+                    this.props.navigation.navigate('Live Map', {
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    });
                 }}>
                     {({handleSubmit}) => (
                         <div style={{textAlign: 'center'}}>
@@ -143,7 +138,10 @@ class HomeScreen extends React.Component {
                 <Text>OR</Text>
                 <br/>
                 <FontAwesome5.Button name="map-marker-alt" backgroundColor="#006a96"
-                                     onPress={() => this.props.navigation.navigate('Live Map', {lat: this.state.lat, lng: this.state.lng})}>
+                                     onPress={() => this.props.navigation.navigate('Live Map', {
+                                         lat: this.state.lat,
+                                         lng: this.state.lng
+                                     })}>
                     Use Current Location
                 </FontAwesome5.Button>
                 <br/>
@@ -179,18 +177,20 @@ function ReportsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <FontAwesome5 name="binoculars" size={48} color="#182b49"/>
-            <Text style={[styles.h1, styles.textNavy]}>View Local Reports</Text>
-            <Text style={[{marginBottom: '0.5rem', textAlign: 'center'}, styles.textNavy]}>
-                Scroll through popular issues reported near you!
-            </Text>
+            <ScrollView>
+                <FontAwesome5 name="binoculars" size={48} color="#182b49"/>
+                <Text style={[styles.h1, styles.textNavy]}>View Local Reports</Text>
+                <Text style={[{marginBottom: '0.5rem', textAlign: 'center'}, styles.textNavy]}>
+                    Scroll through popular issues reported near you!
+                </Text>
 
-            {location && <FlatList
-                data={reports}
-                renderItem={renderReport}
-                keyExtractor={item => item.id}
-            />}
-            {!location && <Text>Loading - Be sure to enable your location to find nearby reports</Text>}
+                {location && <FlatList
+                    data={reports}
+                    renderItem={renderReport}
+                    keyExtractor={item => item.id}
+                />}
+                {!location && <Text>Loading - Be sure to enable your location to find nearby reports</Text>}
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -219,7 +219,10 @@ class LiveMapScreen extends React.Component {
                     map: map,
                     draggable: true
                 });
-                this.props.navigation.navigate('Create Report Modal', {lat: event.latLng.lat(), lng: event.latLng.lng()});
+                this.props.navigation.navigate('Create Report Modal', {
+                    lat: event.latLng.lat(),
+                    lng: event.latLng.lng()
+                });
             }
         });
 
@@ -240,6 +243,23 @@ class LiveMapScreen extends React.Component {
         locationButton.addEventListener("click", () => {
             map.setCenter({lat: this.state.currLoc.coords.latitude, lng: this.state.currLoc.coords.longitude});
         });
+
+        reports.forEach((report) => {
+            const infowindow = new google.maps.InfoWindow({
+                content: `<div><h1>${report.title}</h1><h5>Category: ${report.category}</h5> <p>${report.description}</p>` +
+                    `<h3>Date Reported: ${report.date}</h3>` + `<img src="${report.image}" width="200" />` +
+                    `<p>${report.likes} Likes / ${report.dislikes} Dislikes</p>` + '</div>'
+            });
+
+            const marker = new google.maps.Marker({
+                position: {lat: report.lat, lng: report.lng},
+                map: map,
+            });
+
+            marker.addListener('click', () => {
+                infowindow.open(map, marker);
+            });
+        })
     }
 
     render() {
@@ -307,13 +327,10 @@ function ViewReportModalScreen({route, navigation}) {
             <Text style={styles.h1}>
                 {title}
             </Text>
-            <Text style={styles.h2}>Category: {category}</Text>
+            <Text style={[styles.h2, {textTransform: 'capitalize'}]}>Category: {category}</Text>
             <Text>Submitted: {date}</Text>
             <Image source={{uri: image}} style={{width: 200, height: 200, marginTop: '1rem'}}/>
             <Text style={{marginBottom: '1.5rem', marginTop: '1.5rem'}}>{description}</Text>
-            <FontAwesome5.Button name="arrow-right" backgroundColor="#182b49" onPress={() => navigation.navigate('Live Map', {lat: lat, lng: lng})}>
-                See Location
-            </FontAwesome5.Button>
             <Text>
                 <FontAwesome5 name="thumbs-up" color="#182b49"/>
                 {' '}
@@ -323,6 +340,11 @@ function ViewReportModalScreen({route, navigation}) {
                 {' '}
                 {dislikes}
             </Text>
+            <br/>
+            <FontAwesome5.Button name="arrow-right" backgroundColor="#182b49"
+                                 onPress={() => navigation.navigate('Live Map', {lat: lat, lng: lng})}>
+                See Location
+            </FontAwesome5.Button>
             <br/>
             <FontAwesome5.Button name="arrow-left" backgroundColor="#182b49" onPress={() => navigation.goBack()}>
                 Go back
